@@ -115,6 +115,12 @@ export default function Feed() {
   const [batchStageSource, setBatchStageSource] = useState('');
   const fileInputRef = useRef(null);
 
+  // Import/export by category
+  const importInputRef = useRef(null);
+  const [importTargetSource, setImportTargetSource] = useState('');
+  const [importBusy, setImportBusy]   = useState(false);
+  const [importStatus, setImportStatus] = useState(null);
+
   // Fetch items whenever filters change
   const load = useCallback(async (sources, q, pg, usage, from, to) => {
     setLoading(true);
@@ -186,6 +192,52 @@ export default function Feed() {
   const changeFrom   = (v)   => { setDateFrom(v); setPage(1); load(selectedSources, search, 1, usageFilter, v, dateTo); };
   const changeTo     = (v)   => { setDateTo(v);   setPage(1); load(selectedSources, search, 1, usageFilter, dateFrom, v); };
   const clearDates   = ()    => { setDateFrom(''); setDateTo(''); setPage(1); load(selectedSources, search, 1, usageFilter, '', ''); };
+
+  // Export the currently filtered category/date/usage scope as a downloadable JSON file
+  const exportFiltered = () => {
+    const p = new URLSearchParams({ download: 'true' });
+    if (selectedSources.size > 0) p.set('sources', [...selectedSources].join(','));
+    if (usageFilter === 'unused') p.set('used', 'false');
+    if (usageFilter === 'used')   p.set('used', 'true');
+    if (dateFrom) p.set('from', dateFrom);
+    if (dateTo)   p.set('to', dateTo);
+    window.open(`/api/rss/export?${p}`, '_blank');
+  };
+
+  // Import a previously exported JSON file, optionally re-categorizing into importTargetSource
+  const handleImportFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    setImportBusy(true);
+    setImportStatus(null);
+    try {
+      const text = JSON.parse(await file.text());
+      const items = Array.isArray(text) ? text : text.items;
+      if (!Array.isArray(items) || items.length === 0) {
+        throw new Error('File does not contain an "items" array.');
+      }
+      const payload = { items };
+      if (importTargetSource.trim()) payload.source = importTargetSource.trim();
+
+      const res = await fetch('/api/rss/import', {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify(payload),
+      });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error || res.statusText);
+      setImportStatus(`Imported ${j.imported} item(s)${j.skipped ? `, skipped ${j.skipped}` : ''}.`);
+      await refreshAll();
+      load(selectedSources, search, 1, usageFilter, dateFrom, dateTo);
+      setPage(1);
+    } catch (err) {
+      setImportStatus(`Error: ${err.message}`);
+    } finally {
+      setImportBusy(false);
+    }
+  };
 
   const handleSearch = (e) => {
     const q = e.target.value;
@@ -636,6 +688,34 @@ export default function Feed() {
           <button onClick={() => markFilterUsed(true)} disabled={batchBusy} style={sourceBatchBtn('#f59e0b', batchBusy)}>
             Mark filter used
           </button>
+          <button onClick={exportFiltered} title="Download the current category/date/usage filter as JSON" style={sourceBatchBtn('#3b82f6', false)}>
+            ⬇ Export
+          </button>
+          <input
+            type="text"
+            placeholder="Import into category (optional)"
+            value={importTargetSource}
+            onChange={(e) => setImportTargetSource(e.target.value)}
+            style={{ ...dateInput, width: 200 }}
+          />
+          <button
+            onClick={() => importInputRef.current?.click()}
+            disabled={importBusy}
+            title="Import a JSON file exported from this feed"
+            style={sourceBatchBtn('#a855f7', importBusy)}
+          >
+            {importBusy ? 'Importing…' : '⬆ Import'}
+          </button>
+          <input
+            ref={importInputRef}
+            type="file"
+            accept="application/json"
+            onChange={handleImportFile}
+            style={{ display: 'none' }}
+          />
+          {importStatus && (
+            <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.6)' }}>{importStatus}</span>
+          )}
         </div>
       </div>
 
