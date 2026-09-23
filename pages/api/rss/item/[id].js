@@ -28,7 +28,13 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   const { id } = req.query;
-  const items = await readIndex();
+  let items;
+  try {
+    items = await readIndex();
+  } catch (err) {
+    console.error('rss/item/[id] readIndex error:', err);
+    return res.status(502).json({ error: 'Failed to read RSS store', details: err.message });
+  }
   const itemIndex = items.findIndex((i) => i.id === id);
 
   if (itemIndex === -1) {
@@ -65,7 +71,12 @@ export default async function handler(req, res) {
     }
 
     items[itemIndex] = updated;
-    await writeIndex(items);
+    try {
+      await writeIndex(items);
+    } catch (err) {
+      console.error('rss/item/[id] writeIndex error:', err);
+      return res.status(502).json({ error: 'Failed to update RSS store', details: err.message });
+    }
     return res.status(200).json({ success: true, item: updated });
   }
 
@@ -75,7 +86,12 @@ export default async function handler(req, res) {
     }
 
     const [removed] = items.splice(itemIndex, 1);
-    await writeIndex(items);
+    try {
+      await writeIndex(items);
+    } catch (err) {
+      console.error('rss/item/[id] writeIndex error:', err);
+      return res.status(502).json({ error: 'Failed to update RSS store', details: err.message });
+    }
     await deleteImageBlob(removed.imageUrl);
 
     return res.status(200).json({ success: true, deleted: removed });

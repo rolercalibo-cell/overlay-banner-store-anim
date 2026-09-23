@@ -44,7 +44,13 @@ export default async function handler(req, res) {
     from, to, usedFrom, usedTo,
   } = req.query;
 
-  const allItems = await readIndex();
+  let allItems;
+  try {
+    allItems = await readIndex();
+  } catch (err) {
+    console.error('rss/items readIndex error:', err);
+    return res.status(502).json({ error: 'Failed to read RSS store', details: err.message });
+  }
   let items = allItems;
 
   const sourceList = parseList(sources ?? source);
@@ -97,7 +103,12 @@ export default async function handler(req, res) {
     const nextIndex = allItems.map((i) =>
       ids.has(i.id) ? { ...i, used: true, usedAt: now } : i
     );
-    await writeIndex(nextIndex);
+    try {
+      await writeIndex(nextIndex);
+    } catch (err) {
+      console.error('rss/items writeIndex error:', err);
+      return res.status(502).json({ error: 'Failed to update RSS store', details: err.message });
+    }
     for (const item of returned) { item.used = true; item.usedAt = now; }
   }
 

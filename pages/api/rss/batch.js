@@ -127,7 +127,13 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'action must be "update" or "delete"' });
   }
 
-  const items = await readIndex();
+  let items;
+  try {
+    items = await readIndex();
+  } catch (err) {
+    console.error('rss/batch readIndex error:', err);
+    return res.status(502).json({ error: 'Failed to read RSS store', details: err.message });
+  }
 
   const idSet     = Array.isArray(ids) ? new Set(ids) : null;
   const sourceSet = new Set(parseList(sourcesFilter ?? sourceFilter));
@@ -168,7 +174,12 @@ export default async function handler(req, res) {
     if (removed.length === 0) {
       return res.status(200).json({ success: true, updated: 0, items: [] });
     }
-    await writeIndex(kept);
+    try {
+      await writeIndex(kept);
+    } catch (err) {
+      console.error('rss/batch writeIndex error:', err);
+      return res.status(502).json({ error: 'Failed to update RSS store', details: err.message });
+    }
     await Promise.all(removed.map((r) => deleteImageBlob(r.imageUrl)));
     return res.status(200).json({ success: true, deleted: removed.length, items: removed });
   }
@@ -190,6 +201,11 @@ export default async function handler(req, res) {
     return res.status(200).json({ success: true, updated: 0, items: [] });
   }
 
-  await writeIndex(next);
+  try {
+    await writeIndex(next);
+  } catch (err) {
+    console.error('rss/batch writeIndex error:', err);
+    return res.status(502).json({ error: 'Failed to update RSS store', details: err.message });
+  }
   return res.status(200).json({ success: true, updated: updatedItems.length, items: updatedItems });
 }
