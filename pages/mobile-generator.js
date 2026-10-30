@@ -21,6 +21,9 @@ export default function MobileGenerator() {
   const [photoPreview, setPhotoPreview] = useState(null);
   const [headline, setHeadline] = useState('');
   const [secondaryText, setSecondaryText] = useState('Otaku Buddies');
+  const [useCustomAccount, setUseCustomAccount] = useState(false);
+  const [templateId, setTemplateId] = useState('');
+  const [authCode, setAuthCode] = useState('');
   const [status, setStatus] = useState('idle'); // idle | uploading | generating | done
   const [error, setError] = useState(null);
   const [generatedImage, setGeneratedImage] = useState(null);
@@ -97,6 +100,9 @@ export default function MobileGenerator() {
           imageUrl: uploadData.imageUrl,
           headline: trimmedHeadline,
           secondaryText: trimmedSecondary,
+          ...(useCustomAccount && templateId.trim() && authCode.trim()
+            ? { templateId: templateId.trim(), authCode: authCode.trim() }
+            : {}),
         }),
       });
       const generateData = await generateRes.json();
@@ -108,7 +114,7 @@ export default function MobileGenerator() {
       setError(err.message || 'Something went wrong. Please try again.');
       setStatus('idle');
     }
-  }, [isBusy, photoFile, photoPreview, headline, secondaryText]);
+  }, [isBusy, photoFile, photoPreview, headline, secondaryText, useCustomAccount, templateId, authCode]);
 
   const handleGenerateAnother = useCallback(() => {
     setGeneratedImage(null);
@@ -222,6 +228,45 @@ export default function MobileGenerator() {
               <div className="char-counter">{secondaryText.length} / {MAX_SECONDARY_LENGTH}</div>
             </section>
 
+            <section className="card">
+              <label className="toggle-row">
+                <input
+                  type="checkbox"
+                  checked={useCustomAccount}
+                  onChange={(e) => setUseCustomAccount(e.target.checked)}
+                />
+                <span>Use a different APITemplate.io account</span>
+              </label>
+              {useCustomAccount && (
+                <div className="custom-account-fields">
+                  <label className="field-label" htmlFor="templateId">Template ID</label>
+                  <input
+                    id="templateId"
+                    className="text-input"
+                    type="text"
+                    placeholder="e.g. 8e977b297e3ab2ba"
+                    value={templateId}
+                    onChange={(e) => setTemplateId(e.target.value)}
+                    autoComplete="off"
+                  />
+                  <label className="field-label" htmlFor="authCode">Auth Code</label>
+                  <input
+                    id="authCode"
+                    className="text-input"
+                    type="password"
+                    placeholder="e.g. pKWh1q9L"
+                    value={authCode}
+                    onChange={(e) => setAuthCode(e.target.value)}
+                    autoComplete="off"
+                  />
+                  <p className="hint-text">
+                    Both the Template ID and Auth Code are on your template&apos;s Direct URL tab in APITemplate.io.
+                    Leave blank to use the app&apos;s default template.
+                  </p>
+                </div>
+              )}
+            </section>
+
             {error && (
               <div className="error-banner" role="alert">{error}</div>
             )}
@@ -331,6 +376,24 @@ export default function MobileGenerator() {
           font-size: 0.75rem;
           color: rgba(255, 255, 255, 0.4);
           margin-top: 6px;
+        }
+        .toggle-row {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          font-size: 0.9rem;
+          cursor: pointer;
+        }
+        .custom-account-fields {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          margin-top: 14px;
+        }
+        .hint-text {
+          font-size: 0.75rem;
+          color: rgba(255, 255, 255, 0.45);
+          margin: 0;
         }
         .btn {
           border: none;
