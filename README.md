@@ -2,6 +2,34 @@
 
 A powerful Next.js application that creates professional image banners with custom text overlays. Features 12 design variants, direct image URLs, and comprehensive image processing capabilities.
 
+## 📱 Mobile Image Generator (`/mobile-generator`)
+
+A mobile-first page that lets a user pick a photo from their phone, enter a headline and secondary text,
+and generate an image through an existing APITemplate.io template (`danilwillia`).
+
+**How it works**
+1. The browser reads the chosen photo and uploads it to Vercel Blob via `POST /api/mobile/upload`.
+2. `POST /api/mobile/generate` builds an APITemplate.io [Direct URL](https://apitemplate.io/docs/image-generation/direct-url/)
+   server-side (`rect_image_bg.src`, `text_name.text`, `text_name_1.text`), fetches the generated image,
+   and re-uploads it to Vercel Blob so the APITemplate.io auth code is never sent to the browser.
+3. `GET /api/mobile/download` proxies the result back with a `Content-Disposition` header so Android/desktop
+   browsers reliably download the file instead of just opening it.
+
+**Required environment variables** (see `.env.example`):
+
+| Variable | Purpose |
+| --- | --- |
+| `APITEMPLATE_TEMPLATE_ID` | Your `danilwillia` template ID (APITemplate.io dashboard) |
+| `APITEMPLATE_AUTH_CODE` | Auth code from the template's Direct URL tab |
+| `BLOB_READ_WRITE_TOKEN` | Vercel Blob store token (auto-injected on Vercel when a Blob store is linked; needed in `.env.local` for local dev) |
+
+**Known limitations**
+- Rate limiting is not implemented; this is a publicly accessible endpoint and should be fronted with your own
+  abuse-prevention (e.g. Vercel Firewall/WAF rules) before heavy public use.
+- Uploaded photos and generated images are stored in public Vercel Blob storage with unguessable filenames;
+  they are not automatically deleted. Add a cleanup job if long-term retention is a concern.
+- No PWA manifest/service worker is included.
+
 ## ✨ Features
 
 - **🎨 13 Professional Designs**: From news alerts to corporate styles, plus a blank/transparent option

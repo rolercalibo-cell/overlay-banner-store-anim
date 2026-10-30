@@ -20,6 +20,15 @@
     },
     "pages/api/rss/item/[id].js": {
       "maxDuration": 15
+    },
+    "pages/api/mobile/upload.js": {
+      "maxDuration": 30
+    },
+    "pages/api/mobile/generate.js": {
+      "maxDuration": 30
+    },
+    "pages/api/mobile/download.js": {
+      "maxDuration": 30
     }
   }
 }
